@@ -3,12 +3,8 @@ const API_BASE_URL = "https://tickets.grye.org";
 export async function getEvents() {
   const res = await fetch(`${API_BASE_URL}/events`);
   if (!res.ok) throw new Error("Error al obtener eventos");
-
-  const data = await res.json();
-  return data.data;  
+  return res.json();
 }
-
-
 
 export async function createReservation(eventId, ticketType, quantity) {
   const res = await fetch(`${API_BASE_URL}/reservations`, {
