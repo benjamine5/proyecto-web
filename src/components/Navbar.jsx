@@ -18,7 +18,7 @@ export default function Navbar({ onToggleTheme }) {
           </Link>
           <button
             onClick={onToggleTheme}
-            className="content-center px-2 py-1 my-3 flex items-center justify-center rounded-xl cursor-pointer relative overflow-hidden transition-all duration-50 ease-in-out hover:scale-105 before:absolute before:top-0 before:-left-full before:w-full before:h-full before:transition-all before:z-[-1] before:rounded-xl hover:before:left-0 text-gray-900 dark:text-white bg-white dark:bg-gray-900 border hover:scale-95"
+            className="content-center px-2 py-1 my-3 flex items-center justify-center rounded-xl cursor-pointer relative overflow-hidden transition-all duration-50 ease-in-out hover:scale-105 before:absolute before:top-0 before:-left-full before:w-full before:h-full before:transition-all before:z-[-1] before:rounded-xl hover:before:left-0 text-black dark:text-white bg-white hover:bg-gray-900 hover:text-white dark:hover:bg-white dark:hover:text-black dark:bg-gray-900 border hover:scale-95"
           >
             Theme
           </button>

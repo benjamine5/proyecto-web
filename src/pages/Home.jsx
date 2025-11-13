@@ -83,7 +83,7 @@ function Home() {
 
     if(category) {
       results = results.filter(
-        (Event) => event.category?.toLowerCase() === category.toLowerCase()
+        (event) => event.category?.toLowerCase() === category.toLowerCase()
       );
     }
 
@@ -114,9 +114,8 @@ function Home() {
             Descubre los próximos eventos y consigue tus entradas fácilmente.
           </p>
 
-          <SearchBar onSearch={handleSearch}/>
-
         </div>
+        <SearchBar onSearch={handleSearch}/>
       </section>
 
       {error && (

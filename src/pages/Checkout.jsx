@@ -37,7 +37,7 @@ export default function Checkout() {
         <div className="border-2 border-gray-600 dark:bg-gray-900 rounded-lg shadow-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold">Resumen de compra</h2>
           <div className="border-t border-gray-700 pt-3">
-            <p className="font-medium dark:text-gray-300">Festival de perdida del 50/50 en viviane 2025</p>
+            <p className="font-medium dark:text-gray-300">Festival de musica</p>
             <p className="dark:text-gray-400 text-sm">1x VIP</p>
           </div>
           <div className="border-t border-gray-700 pt-4 flex justify-between items-center">

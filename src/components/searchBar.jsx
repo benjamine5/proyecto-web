@@ -10,6 +10,7 @@ const SearchBar = ({ onSearch }) => {
   useEffect(() => {
     async function loadCategories() {
       try {
+        console.log("API_BASE_URL =", API_BASE_URL);
         const res = await fetch(`${API_BASE_URL}/events`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -41,15 +42,15 @@ const SearchBar = ({ onSearch }) => {
   };
 
   return (
-    <form className="max-w-2xl mx-auto mt-6" onSubmit={handleSearch}>
-      <div className="flex shadow rounded overflow-hidden border">
+    <form className="w-170 flex justify-center mt-6" onSubmit={handleSearch}>
+      <div className="flex w-full max-w-6xl shadow rounded overflow-hidden border">
         {/* Dropdown de categorías */}
         <select
-          className="bg-gray-100 text-gray-700 p-2 border-r outline-none"
+          className="appearance-none bg:transparent p-2 border-r outline-none w-44"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
         >
-          <option value="">Todas las categorías</option>
+          <option className="p-1" value="">Todas las categorías</option>
           {categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -61,8 +62,8 @@ const SearchBar = ({ onSearch }) => {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 p-2 outline-none"
-          placeholder="Buscar por nombre de evento..."
+          className="flex-1 min-w-0 p-2 outline-none"
+          placeholder="Buscar nombre del evento..."
         />
 
         <button

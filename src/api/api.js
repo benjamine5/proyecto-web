@@ -1,7 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-export async function getEvents() {
-  const res = await fetch(`${API_BASE_URL}/events`);
+export async function getEvents(limit = 50, page = 1) {
+  const res = await fetch(`${API_BASE_URL}/events?limit=${limit}&page=${page}`);
   if (!res.ok) throw new Error("Error al obtener eventos");
   return res.json();
 }

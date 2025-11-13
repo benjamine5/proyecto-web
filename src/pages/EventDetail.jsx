@@ -108,7 +108,7 @@ function EventDetail() {
   )
 
   return (
-    <div className="flex flex-row gap-15 justify-center items-center min-screen h-169 bg-white rounded-xl dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
+    <div className="flex flex-row gap-15 justify-center items-center min-screen h-220 bg-white rounded-xl dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
       <div className="border-2 border-gray-600 rounded dark:bg-gray-900 p-8 max-w-3xl text-lg">
         <img
           src={
@@ -143,9 +143,9 @@ function EventDetail() {
           <p className="font-bold text-4xl mb-8">Seleccione sus tickets:</p>
 
           <div className="w-full divide-y divide-gray-600">
+
             <div className="py-6">
               <p className="mb-3">
-                <b className="font-semibold">General:</b>{" "}
                 <span className="text-black">{event.tickets.map((ticket) => (
                   <div key={ticket.type}>
                     <p>{ticket.type}</p>
@@ -210,72 +210,9 @@ function EventDetail() {
               </form>
             </div>
 
-            <div className="py-6">
-              <p className="mb-3">
-                <b className="font-semibold">VIP:</b>{" "}
-              <span>acá coloquen la lógica gracias :3</span>
-              </p>
-              <form className="max-w-xs mx-auto">
-                <div className="relative flex items-center gap-2 scale-110">
-                  <button
-                    type="button"
-                    id="decrement-button"
-                    data-input-counter-decrement="counter-input"
-                    className="shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded h-8 w-8 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5 text-gray-900 dark:text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 18 2"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M1 1h16"
-                      />
-                    </svg>
-                  </button>
-
-                  <input
-                    type="text"
-                    id="counter-input"
-                    data-input-counter
-                    className="text-gray-900 dark:text-white border-0 bg-transparent text-lg font-normal focus:outline-none focus:ring-0 max-w-[3rem] text-center"
-                    placeholder="0"
-                  />
-
-                  <button
-                    type="button"
-                    id="increment-button"
-                    data-input-counter-increment="counter-input"
-                    className="shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded h-8 w-8 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5 text-gray-900 dark:text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 18 18"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 1v16M1 9h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </form>
-            </div>
-
             <div className="pt-6">
               <p className="mb-3">
                 <b className="font-semibold">Total:</b>{" "}
-                <span>acá coloquen la lógica gracias :3</span>
               </p>
 
               <Link
