@@ -1,45 +1,49 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { getEvents } from "../api/api";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { getEvents, createReservation } from "../api/api";
 import { Link } from "react-router-dom";
 
-function EventDetail() {
+export default function EventDetail() {
   const { id } = useParams();
+  const nav = useNavigate();
+
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [qtyByType, setQtyByType] = useState({});
 
   useEffect(() => {
     async function fetchEvent() {
       try {
         const response = await getEvents();
-
         const list = Array.isArray(response)
           ? response
           : response?.data || [];
 
-        console.log("Eventos :", list);
-
         const found = list.find((ev) => {
-          const possibleIds = [
-            ev._id,
+          const ids = [
             ev._id,
             ev._id?.$oid,
             ev._id?.toString?.(),
-            ev.event_id,
+            ev.id,
             ev.uuid,
+            ev.event_id,
           ];
-          return possibleIds.map(String).includes(String(id));
+          return ids.map(String).includes(String(id));
         });
 
-        if (found) {
-          setEvent(found);
-        } else {
-          throw new Error("Evento no encontrado");
-        }
+        if (!found) throw new Error("Evento no encontrado");
+
+        setEvent(found);
+
+        const init = {};
+        (found.tickets || []).forEach((t) => (init[t.type] = 0));
+        setQtyByType(init);
+
       } catch (err) {
         console.error("Error al cargar evento:", err);
-        setError("No se pudo cargar el evento.");
+        setError(err.message || "No se pudo cargar el evento.");
       } finally {
         setLoading(false);
       }
@@ -48,186 +52,169 @@ function EventDetail() {
     fetchEvent();
   }, [id]);
 
-  if (loading) return (
-    <div class="flex flex-row gap-2 justify-center items-center h-screen">
-      <div class="w-4 h-4 rounded-full bg-blue-700 animate-bounce [animation-delay:.7s]"></div>
-      <div class="w-4 h-4 rounded-full bg-blue-700 animate-bounce [animation-delay:.3s]"></div>
-      <div class="w-4 h-4 rounded-full bg-blue-700 animate-bounce [animation-delay:.7s]"></div>
-    </div>
-  )
+  const setQty = (type, next) => {
+    const ticket = event.tickets.find((t) => t.type === type);
+    const max = Math.min(110, ticket.available ?? 0);
+    const val = Math.max(0, Math.min(max, Number(next) || 0));
+    setQtyByType((prev) => ({ ...prev, [type]: val }));
+  };
 
-  if (error)
-  return (
-    <div className="fixed inset-0 flex justify-center items-center">
-      <div
-        role="alert"
-        className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900 border-l-4 border-red-500 dark:border-red-700 text-red-900 dark:text-red-100 px-4 py-3 rounded-lg transition duration-300 ease-in-out hover:bg-red-200 dark:hover:bg-red-800 transform hover:scale-105 shadow-lg max-w-md"
-      >
-        <svg
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          fill="none"
-          className="h-5 w-5 flex-shrink-0 text-red-600"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M13 16h-1v-4h1m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          ></path>
-        </svg>
-        <p className="text-sm font-semibold">Error - {error}</p>
-      </div>
-    </div>
+  const inc = (type) => setQty(type, (qtyByType[type] || 0) + 1);
+  const dec = (type) => setQty(type, (qtyByType[type] || 0) - 1);
+
+  const totalCLP = useMemo(() => {
+    if (!event?.tickets) return 0;
+    return event.tickets.reduce(
+      (acc, t) => acc + (qtyByType[t.type] || 0) * (t.price || 0),
+      0
+    );
+  }, [qtyByType, event]);
+
+  const totalItems = useMemo(
+    () => Object.values(qtyByType).reduce((a, b) => a + (b || 0), 0),
+    [qtyByType]
   );
 
-  if (!event) return (
-    <div className="fixed inset-0 flex justify-center items-center">
-      <div
-        role="alert"
-        className="inline-flex items-center gap-2 bg-red-100 dark:bg-red-900 border-l-4 border-red-500 dark:border-red-700 text-red-900 dark:text-red-100 px-4 py-3 rounded-lg transition duration-300 ease-in-out hover:bg-red-200 dark:hover:bg-red-800 transform hover:scale-105 shadow-lg max-w-md"
-      >
-        <svg
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          fill="none"
-          className="h-5 w-5 flex-shrink-0 text-red-600"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M13 16h-1v-4h1m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          ></path>
-        </svg>
-        <p className="text-sm font-semibold">Error - Evento no encontrado.</p>
+  // 🚀 RESERVAR
+  const reservar = async () => {
+    const items = Object.entries(qtyByType)
+      .filter(([, q]) => q > 0)
+      .map(([type, quantity]) => ({ type, quantity }));
+
+    if (items.length === 0) {
+      alert("Selecciona al menos 1 entrada.");
+      return;
+    }
+
+    try {
+      // 👉 nueva forma correcta: createReservation(eventId, items)
+      const res = await createReservation(event._id, items);
+
+      const reservationId =
+        res?.reservation_id ||
+        res?.id ||
+        res?._id ||
+        Object.values(res)[0];
+
+      nav(`/checkout/${reservationId}`);
+    } catch (e) {
+      alert(e.message || "No se pudo crear la reserva");
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent"></div>
       </div>
-    </div>
-  )
+    );
+
+  if (error)
+    return (
+      <div className="fixed inset-0 flex justify-center items-center">
+        <div className="bg-red-100 dark:bg-red-900 border-l-4 border-red-500 px-4 py-3 rounded-lg text-red-700 dark:text-red-100 shadow-lg">
+          {error}
+        </div>
+      </div>
+    );
 
   return (
-    <div className="flex flex-row gap-15 justify-center items-center min-screen h-170 bg-white rounded-xl dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
-      <div className="border-2 border-gray-600 rounded dark:bg-gray-900 p-8 max-w-3xl text-lg">
+    <div className="flex flex-row gap-16 justify-center items-center min-h-screen bg-white dark:bg-gray-800 p-6">
+
+      {/* IZQUIERDA */}
+      <div className="border-2 border-gray-600 rounded dark:bg-gray-900 p-8 max-w-xl">
         <img
           src={
             event.image ||
             "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800"
           }
           alt={event.name}
-          className="w-full max-w-md rounded mb-6 mx-auto"
+          className="w-full rounded mb-6"
         />
 
-        <p className="font-sans text-2xl font-bold dark:text-gray-200">{event.name}</p>
+        <h1 className="text-3xl font-bold dark:text-gray-200">
+          {event.name}
+        </h1>
 
-        <div className="place-items-start p-4 dark:text-gray-200">
+        <div className="mt-4 dark:text-gray-200">
+          <p><b>Categoría:</b> {event.category || "Sin categoría"}</p>
           <p>
-            <b className="font-semibold">Categoría:</b> {event.category || "Sin categoría"}
-          </p>
-          <p>
-            <b className="font-semibold">Fecha:</b>{" "}
+            <b>Fecha:</b>{" "}
             {new Date(event.date).toLocaleString("es-CL")}
           </p>
-          <p>
-            <b className="font-semibold">Lugar:</b> {event.location || "Por confirmar"}
-          </p>
-          {event.description && (
-            <p className="mt-4">{event.description}</p>
-          )}
+          <p><b>Lugar:</b> {event.location}</p>
+          {event.description && <p className="mt-4">{event.description}</p>}
         </div>
       </div>
 
-      <div className="border-2 border-gray-600 rounded dark:bg-gray-900 p-8">
-        <div className="flex flex-col items-start text-left dark:text-gray-200 w-full text-lg">
-          <p className="font-bold text-4xl mb-8">Seleccione sus tickets:</p>
+      {/* DERECHA */}
+      <div className="border-2 border-gray-600 rounded dark:bg-gray-900 p-8 w-[380px]">
+        <h2 className="font-bold text-3xl dark:text-gray-200 mb-6">
+          Seleccione sus tickets:
+        </h2>
 
-          <div className="w-full divide-y divide-gray-600">
+        <div className="divide-y divide-gray-600">
+          {event.tickets.map((t) => {
+            const q = qtyByType[t.type] || 0;
+            const max = Math.min(110, t.available);
 
-            <div className="py-6">
-              <p className="mb-3">
-                <span className="text-black">{event.tickets.map((ticket) => (
-                  <div key={ticket.type}>
-                    <p>{ticket.type}</p>
-                    <p>${ticket.price.toLocaleString()} — Disponibles: {ticket.available}</p>
-                  </div>
-                ))}</span>
-              </p>
-              <form className="max-w-xs mx-auto">
+            return (
+              <div key={t.type} className="py-6 dark:text-gray-200">
+                <p className="font-semibold text-lg">{t.type}</p>
+                <p className="mb-3">
+                  ${t.price.toLocaleString()} — Disponibles: {t.available}
+                </p>
+
+                {/* Selector cantidad */}
                 <div className="relative flex items-center gap-2 scale-110">
                   <button
                     type="button"
-                    id="decrement-button"
-                    data-input-counter-decrement="counter-input"
-                    className="shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded h-8 w-8 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
+                    onClick={() => dec(t.type)}
+                    disabled={q <= 0}
+                    className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 h-8 w-8 rounded flex justify-center items-center"
                   >
-                    <svg
-                      className="w-3.5 h-3.5 text-gray-900 dark:text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 18 2"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M1 1h16"
-                      />
-                    </svg>
+                    −
                   </button>
 
                   <input
                     type="text"
-                    id="counter-input"
-                    data-input-counter
-                    className="text-gray-900 dark:text-white border-0 bg-transparent text-lg font-normal focus:outline-none focus:ring-0 max-w-[3rem] text-center"
-                    placeholder="0"
+                    className="w-10 text-center bg-transparent border-0 text-lg dark:text-white"
+                    value={q}
+                    onChange={(e) =>
+                      setQty(t.type, parseInt(e.target.value || "0", 10))
+                    }
                   />
 
                   <button
                     type="button"
-                    id="increment-button"
-                    data-input-counter-increment="counter-input"
-                    className="shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded h-8 w-8 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
+                    onClick={() => inc(t.type)}
+                    disabled={q >= max}
+                    className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 h-8 w-8 rounded flex justify-center items-center"
                   >
-                    <svg
-                      className="w-3.5 h-3.5 text-gray-900 dark:text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 18 18"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 1v16M1 9h16"
-                      />
-                    </svg>
+                    +
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+            );
+          })}
 
-            <div className="pt-6">
-              <p className="mb-3">
-                <b className="font-semibold">Total:</b>{" "}
-              </p>
+          {/* TOTAL */}
+          <div className="pt-6 dark:text-gray-200">
+            <p className="text-xl font-semibold">
+              Total: ${totalCLP.toLocaleString("es-CL")}
+            </p>
 
-              <Link
-                to="/event/:id/checkout/:id"
-                className="mt-4 inline-block bg-sky-500 hover:bg-sky-600 text-white text-center font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Reserva
-              </Link>
-            </div>
+            <button
+              onClick={reservar}
+              disabled={totalItems === 0}
+              className="mt-4 w-full bg-sky-500 hover:bg-sky-600 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition"
+            >
+              Reservar
+            </button>
           </div>
+
         </div>
       </div>
-
     </div>
   );
 }
-
-export default EventDetail;

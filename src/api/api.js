@@ -6,15 +6,28 @@ export async function getEvents() {
   return res.json();
 }
 
-export async function createReservation(eventId, ticketType, quantity) {
+export async function createReservation(eventId, items) {
   const res = await fetch(`${API_BASE_URL}/reservations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_id: eventId, ticket_type: ticketType, quantity }),
+    body: JSON.stringify({
+      event_id: eventId,
+      items: items
+    }),
   });
-  if (!res.ok) throw new Error("Error al crear reserva");
-  return res.json();
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    console.error(JSON.stringify(data, null, 2));
+    throw new Error("Error al crear reserva");
+  }
+
+  return data;
 }
+
+
+
 
 export async function confirmCheckout(reservationId) {
   const res = await fetch(`${API_BASE_URL}/checkout`, {

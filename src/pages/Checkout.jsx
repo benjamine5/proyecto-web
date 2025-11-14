@@ -1,18 +1,61 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const [timeLeft, setTimeLeft] = useState(5 * 60);
+  const { reservationId } = useParams();
+
+  const [reservation, setReservation] = useState(null);
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  const [buyer, setBuyer] = useState({
+    name: "",
+    email: ""
+  });
+
+
   useEffect(() => {
+    async function fetchReservation() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/reservations/${reservationId}`);
+        if (!res.ok) throw new Error("No se pudo obtener la reserva");
+        const data = await res.json();
+
+        setReservation(data);
+        setItems(data.items || []);
+        setTotal(data.total_price || 0);
+
+        const expires = new Date(data.expires_at).getTime();
+        const now = Date.now();
+        const diff = Math.floor((expires - now) / 1000);
+
+        const MAX_TIME = 300;
+        setTimeLeft(diff > 0 ? Math.min(diff, MAX_TIME) : 0);
+
+      } catch (err) {
+        alert("Reserva inválida o vencida.");
+        navigate("/");
+      }
+    }
+
+    fetchReservation();
+  }, [reservationId]);
+
+  // Temporizador 
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
+      setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          alert(
-            "El límite de tiempo de compra ha terminado, redirigiendo a eventos."
-          );
-          navigate(-1);
+          alert("El tiempo expiró. Volviendo a eventos.");
+          navigate("/");
           return 0;
         }
         return prev - 1;
@@ -20,70 +63,118 @@ export default function Checkout() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, [timeLeft]);
 
-  function formatTime(secondsTotal) {
-    const minutes = Math.floor(secondsTotal / 60);
-    const seconds = secondsTotal % 60;
-    return `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
+
+  async function completePurchase() {
+  try {
+    const payload = {
+      reservation_id: reservationId,
+      buyer: {
+        name: buyer.name,
+        email: buyer.email,
+      },
+    };
+
+    console.log("ENVIANDO A /checkout:", payload);
+
+    const res = await fetch(`${API_BASE_URL}/checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    console.log("RESPUESTA:", data);
+
+    if (!res.ok) {
+      alert("Datos enviados:", JSON.stringify(payload, null, 2));
+      throw new Error("Error al completar compra");
+    }
+
+    navigate(`/purchases/${data._id}`);
+
+  } catch (err) {
+    console.error(err);
+    alert("Hubo un problema al completar la compra.");
   }
+}
+
+
+
+
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  if (!reservation)
+    return <p className="text-center mt-20 text-gray-300">Cargando reserva...</p>;
 
   return (
-    <div className="min-h-screen  dark:bg-gray-950 dark:text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen dark:bg-gray-950 dark:text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-center mb-10">Completar Compra</h1>
-      <p className="text-3xl text-center mb-8 text-sm dark:text-gray-300">
-          Tiempo restante para completar la compra:{" "}
-          <span
-            className={
-              timeLeft <= 60 ? "text-red-400 font-semibold" : "text-yellow-300"
-            }
-          >
-            {formatTime(timeLeft)}
-          </span>
-        </p>
+
+      <p className="text-center mb-8 text-lg">
+        Tiempo restante:{" "}
+        <span
+          className={timeLeft <= 60 ? "text-red-400 font-bold" : "text-yellow-300"}
+        >
+          {formatTime(timeLeft)}
+        </span>
+      </p>
 
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* aca va la informacion de lo que va a comprar */}
+
+        {/* Datos comprador */}
         <div className="border-2 border-gray-600 dark:bg-gray-900 rounded-lg shadow-lg p-6 space-y-6">
-          {/* aca va la informacion del cliente  */}
           <div>
-            <h2 className="text-lg font-semibold mb-3">Informacion de Comprador</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="First Name"
-                className="w-full px-3 py-2 rounded-md dark:bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
-              <input
-                type="text"
-                placeholder="Last Name"
-                className="w-full px-3 py-2 rounded-md dark:bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
+            <h2 className="text-lg font-semibold mb-3">Información del comprador</h2>
+
+            <input
+              type="text"
+              placeholder="Nombre completo"
+              className="w-full px-3 py-2 rounded-md dark:bg-gray-800 border border-gray-700"
+              value={buyer.name}
+              onChange={(e) => setBuyer({ ...buyer, name: e.target.value })}
+            />
+
             <input
               type="email"
               placeholder="Email"
-              className="mt-4 w-full px-3 py-2 rounded-md dark:bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="mt-3 w-full px-3 py-2 rounded-md dark:bg-gray-800 border border-gray-700"
+              value={buyer.email}
+              onChange={(e) => setBuyer({ ...buyer, email: e.target.value })}
             />
           </div>
 
-          <button className="w-full py-3 mt-4 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-md transition-colors">
-            Completar Compra 
+          <button
+            onClick={completePurchase}
+            className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-md"
+          >
+            Completar Compra
           </button>
         </div>
 
-        {/* aca va la info del comprador, hay que remplazar lo blanco con los datos de la api*/}
+        {/* Resumen compra */}
         <div className="border-2 border-gray-600 dark:bg-gray-900 rounded-lg shadow-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold">Resumen de compra</h2>
-          <div className="border-t dark:border-gray-700 pt-3">
-            <p className="font-medium dark:text-gray-300">Festival de musica</p>
-            <p className="dark:text-gray-400 text-sm">1x VIP</p>
-          </div>
-          <div className="border-t dark:border-gray-700 pt-4 flex justify-between items-center">
-            <p className="font-semibold dark:text-gray-300">Total</p>
-            <p className="text-xl font-bold dark:text-white">$100000</p>
+
+          {items.map((item, idx) => (
+            <div key={idx} className="border-t pt-3 dark:border-gray-700">
+              <p className="font-medium dark:text-gray-300">{item.type}</p>
+              <p className="dark:text-gray-400 text-sm">
+                {item.quantity}x {item.type}
+              </p>
+            </div>
+          ))}
+
+          <div className="border-t pt-4 flex justify-between items-center dark:border-gray-700">
+            <p className="font-semibold">Total</p>
+            <p className="text-xl font-bold">
+              ${total.toLocaleString("es-CL")}
+            </p>
           </div>
         </div>
       </div>
